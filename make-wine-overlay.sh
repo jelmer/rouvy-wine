@@ -28,9 +28,13 @@ for d in "$WINE_SRC"/lib/wine/*; do
 done
 
 for f in "$WINE_SRC"/bin/*; do
+    name="$(basename "$f")"
     if [ -L "$f" ]; then
         cp -P "$f" "$DEST/bin/"
-    elif [ "$(basename "$f")" = wine ]; then
+    elif [ "$name" = wine ] || [ "$name" = wineserver ]; then
+        # Copy rather than symlink: wine and wineserver share a protocol
+        # version, so a WINE_SRC upgrade would otherwise desync the symlinked
+        # wineserver from the copied-and-patched wine.
         cp "$f" "$DEST/bin/"
     else
         ln -s "$f" "$DEST/bin/"
