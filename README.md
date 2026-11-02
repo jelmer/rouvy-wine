@@ -37,6 +37,27 @@ is only loaded once per wineserver.
 
 After changing the Wine source, run `build.sh` again.
 
+## Container
+
+`Containerfile` builds a Podman image that bundles winehq-devel, the
+patched Wine overlay and a freshly installed ROUVY. User data (login,
+settings, downloaded routes) lives in a mounted volume so the same image
+can be shared.
+
+    podman build -t ghcr.io/jelmer/rouvy-wine .
+    ./run-rouvy-container.sh
+
+Published builds live at `ghcr.io/jelmer/rouvy-wine`; `podman pull` works
+instead of building locally.
+
+The first run seeds the `rouvy-data` volume from the ROUVY install baked
+into the image; later runs reuse it. `run-rouvy-container.sh` wires up
+the host X display, PulseAudio and the system D-Bus (BlueZ needs the
+system bus to see trainers), and uses host networking.
+
+Rebuild the image to pick up a new ROUVY release or Wine patches; the
+`rouvy-data` volume is not touched by a rebuild.
+
 ## Status
 
 Tested with a Wahoo KICKR: it is found, pairs as power meter, cadence
