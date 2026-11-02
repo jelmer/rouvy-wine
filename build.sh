@@ -17,8 +17,12 @@ if [ ! -x "$WINE_SRC/bin/wine" ]; then
     exit 1
 fi
 
-if [ ! -d "$WINE_DIR" ]; then
-    git clone --depth 1 --branch "$WINE_BRANCH" "$WINE_REPO" "$WINE_DIR"
+if [ ! -f "$WINE_DIR/VERSION" ]; then
+    if [ -f "$dir/.gitmodules" ] && [ "$WINE_DIR" = "$dir/wine" ]; then
+        git -C "$dir" submodule update --init --depth 1 wine
+    else
+        git clone --depth 1 --branch "$WINE_BRANCH" "$WINE_REPO" "$WINE_DIR"
+    fi
 fi
 
 installed="$("$WINE_SRC/bin/wine" --version | cut -d' ' -f1)"
