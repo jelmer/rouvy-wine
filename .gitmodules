@@ -1,5 +1,5 @@
 [submodule "wine"]
-	path = wine
+	path = container/wine
 	url = https://github.com/jelmer/wine.git
 	branch = rouvy-fixes
 	shallow = true

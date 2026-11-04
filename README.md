@@ -24,17 +24,17 @@ to the display, audio and Bluetooth.
 Pull a published build:
 
     podman pull ghcr.io/jelmer/rouvy-wine
-    ./run-rouvy-container.sh
+    ./run-rouvy.sh
 
 Or build locally:
 
-    git submodule update --init --depth 1 wine
-    podman build -t ghcr.io/jelmer/rouvy-wine .
-    ./run-rouvy-container.sh
+    git submodule update --init --depth 1 container/wine
+    podman build -f container/Containerfile -t ghcr.io/jelmer/rouvy-wine .
+    ./run-rouvy.sh
 
 The first run seeds the `rouvy-data` volume from the ROUVY install baked
 into the image; later runs reuse it, so your login and downloaded routes
-survive image rebuilds. `run-rouvy-container.sh` wires up the host X
+survive image rebuilds. `run-rouvy.sh` wires up the host X
 display, PulseAudio, the system D-Bus (BlueZ needs the system bus to see
 trainers), and the GPU, and uses host networking.
 

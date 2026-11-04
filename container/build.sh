@@ -18,8 +18,10 @@ if [ ! -x "$WINE_SRC/bin/wine" ]; then
 fi
 
 if [ ! -f "$WINE_DIR/VERSION" ]; then
-    if [ -f "$dir/.gitmodules" ] && [ "$WINE_DIR" = "$dir/wine" ]; then
-        git -C "$dir" submodule update --init --depth 1 wine
+    # From the source checkout the wine submodule sits alongside; inside the
+    # container only build.sh is present, so fall back to a fresh clone.
+    if [ -f "$dir/../.gitmodules" ] && [ "$WINE_DIR" = "$dir/wine" ]; then
+        git -C "$dir/.." submodule update --init --depth 1 container/wine
     else
         git clone --depth 1 --branch "$WINE_BRANCH" "$WINE_REPO" "$WINE_DIR"
     fi

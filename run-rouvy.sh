@@ -1,43 +1,46 @@
 #!/bin/sh
-# Run ROUVY with the patched Wine from wine-overlay (see build.sh).
+# Run ROUVY from the rouvy-wine container with host access to display,
+# audio and Bluetooth. User data lives in the 'rouvy-data' podman volume.
 set -e
 
-dir="$(dirname "$(readlink -f "$0")")"
-wine="$dir/wine-overlay/bin/wine"
+IMAGE="${ROUVY_IMAGE:-ghcr.io/jelmer/rouvy-wine}"
+VOLUME="${ROUVY_VOLUME:-rouvy-data}"
 
-[ -x "$wine" ] || "$dir/build.sh"
-
-# Drivers such as winebth.sys are loaded once per wineserver, so a server
-# started by the unpatched Wine keeps using the unpatched Bluetooth driver.
-if pgrep -u "$(id -u)" -x wineserver >/dev/null; then
-    echo "warning: a wineserver is already running; if Bluetooth does not work," >&2
-    echo "close other Wine programs, run '$dir/wine-overlay/bin/wineserver -k' and try again" >&2
+if ! podman volume exists "$VOLUME" 2>/dev/null; then
+    podman volume create "$VOLUME" >/dev/null
 fi
 
-ss_timeout=""
-dpms_enabled=""
-if command -v xset >/dev/null 2>&1; then
-    ss_timeout="$(xset q 2>/dev/null | awk '/timeout:/ { print $2; exit }')"
-    dpms_enabled="$(xset q 2>/dev/null | awk '/DPMS is/ { print $3; exit }')"
-    xset s off -dpms >/dev/null 2>&1 || true
+# Allow local X clients from this user. Harmless if xhost or X are absent.
+if command -v xhost >/dev/null 2>&1; then
+    xhost +SI:localuser:"$(id -un)" >/dev/null 2>&1 || true
 fi
 
-restore_screen() {
-    if command -v xset >/dev/null 2>&1; then
-        [ "$dpms_enabled" = "Enabled" ] && xset +dpms >/dev/null 2>&1 || true
-        case "$ss_timeout" in
-            ''|*[!0-9]*) ;;
-            0) ;;
-            *) xset s "$ss_timeout" >/dev/null 2>&1 || true ;;
-        esac
-    fi
-}
+PULSE_SOCK="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/pulse/native"
+pulse_args=""
+if [ -S "$PULSE_SOCK" ]; then
+    pulse_args="-e PULSE_SERVER=unix:/run/pulse/native -v $PULSE_SOCK:/run/pulse/native"
+fi
 
-cleanup() {
-    trap - EXIT INT TERM
-    restore_screen
-}
-trap cleanup EXIT INT TERM
+# BlueZ runs on the system D-Bus; expose it read-write.
+dbus_args="-v /run/dbus/system_bus_socket:/run/dbus/system_bus_socket"
 
-"$wine" "${WINEPREFIX:-$HOME/.wine}/drive_c/Program Files/VirtualTraining/Rouvy/Rouvy.exe" "$@"
+# Prefer the NVIDIA CDI device if present; otherwise fall back to /dev/dri
+# for Mesa-based GPUs. The CDI file is produced by `nvidia-ctk cdi generate`;
+# regenerate it after a driver upgrade.
+gpu_args="--device /dev/dri"
+if [ -f /etc/cdi/nvidia.yaml ] || [ -f /var/run/cdi/nvidia.yaml ]; then
+    gpu_args="--device nvidia.com/gpu=all"
+fi
 
+# shellcheck disable=SC2086
+exec podman run --rm -it \
+    --name rouvy \
+    --network host \
+    -e DISPLAY="$DISPLAY" \
+    -e XDG_RUNTIME_DIR=/run/user/0 \
+    -v /tmp/.X11-unix:/tmp/.X11-unix \
+    $dbus_args \
+    $pulse_args \
+    $gpu_args \
+    -v "$VOLUME":/data \
+    "$IMAGE" "$@"

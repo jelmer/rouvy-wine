@@ -1,7 +1,7 @@
 # ROUVY on Linux with patched Wine, in a container.
 #
-# Build:  podman build -t ghcr.io/jelmer/rouvy-wine .
-# Run:    see run-rouvy-container.sh
+# Build:  podman build -f container/Containerfile -t ghcr.io/jelmer/rouvy-wine .
+# Run:    see run-rouvy.sh in the repo root
 #
 # The image bakes in winehq-devel, the patched Wine overlay and a freshly
 # installed ROUVY. All user data (prefix, login, settings, downloaded
@@ -52,7 +52,7 @@ RUN apt-get update \
 
 # Build the patched Wine modules and install the overlay in /opt/wine-overlay.
 WORKDIR /build
-COPY build.sh make-wine-overlay.sh ./
+COPY container/build.sh container/make-wine-overlay.sh ./
 RUN WINE_SRC=/opt/wine-devel \
     WINE_DIR=/build/wine \
     sh build.sh /opt/wine-overlay \
@@ -60,7 +60,7 @@ RUN WINE_SRC=/opt/wine-devel \
 
 # Install ROUVY into a template prefix. NSIS /S doesn't need a display, so
 # the installer runs headless. wineboot primes the prefix first.
-COPY download-rouvy.sh /build/
+COPY container/download-rouvy.sh /build/
 RUN /build/download-rouvy.sh /build \
  && mkdir -p /tmp/xdg && chmod 700 /tmp/xdg \
  && export WINEPREFIX=/opt/rouvy-prefix WINEDEBUG=-all XDG_RUNTIME_DIR=/tmp/xdg \
@@ -70,7 +70,7 @@ RUN /build/download-rouvy.sh /build \
  && /opt/wine-overlay/bin/wineserver -w \
  && rm -f /build/Rouvy_Installer*.exe
 
-COPY container-entrypoint.sh /usr/local/bin/rouvy
+COPY container/container-entrypoint.sh /usr/local/bin/rouvy
 RUN chmod +x /usr/local/bin/rouvy
 
 VOLUME ["/data"]
