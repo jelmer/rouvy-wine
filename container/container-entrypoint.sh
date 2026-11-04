@@ -1,5 +1,5 @@
 #!/bin/sh
-# Entry point for the rouvy-wine container. Seeds /data from the template
+# Entry point for the rouvy container. Seeds /data from the template
 # prefix baked into the image on first run, then launches ROUVY under the
 # patched Wine overlay.
 set -e

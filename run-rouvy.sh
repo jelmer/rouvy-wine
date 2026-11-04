@@ -1,9 +1,9 @@
 #!/bin/sh
-# Run ROUVY from the rouvy-wine container with host access to display,
+# Run ROUVY from the rouvy container with host access to display,
 # audio and Bluetooth. User data lives in the 'rouvy-data' podman volume.
 set -e
 
-IMAGE="${ROUVY_IMAGE:-ghcr.io/jelmer/rouvy-wine}"
+IMAGE="${ROUVY_IMAGE:-ghcr.io/jelmer/rouvy}"
 VOLUME="${ROUVY_VOLUME:-rouvy-data}"
 
 if ! podman volume exists "$VOLUME" 2>/dev/null; then

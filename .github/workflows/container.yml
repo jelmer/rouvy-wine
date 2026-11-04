@@ -12,7 +12,7 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE: ${{ github.repository_owner }}/rouvy-wine
+  IMAGE: ${{ github.repository_owner }}/rouvy
 
 jobs:
   build:

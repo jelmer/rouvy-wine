@@ -1,6 +1,6 @@
 # ROUVY on Linux with patched Wine, in a container.
 #
-# Build:  podman build -f container/Containerfile -t ghcr.io/jelmer/rouvy-wine .
+# Build:  podman build -f container/Containerfile -t ghcr.io/jelmer/rouvy .
 # Run:    see run-rouvy.sh in the repo root
 #
 # The image bakes in winehq-devel, the patched Wine overlay and a freshly

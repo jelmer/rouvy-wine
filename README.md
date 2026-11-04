@@ -23,13 +23,13 @@ to the display, audio and Bluetooth.
 
 Pull a published build:
 
-    podman pull ghcr.io/jelmer/rouvy-wine
+    podman pull ghcr.io/jelmer/rouvy
     ./run-rouvy.sh
 
 Or build locally:
 
     git submodule update --init --depth 1 container/wine
-    podman build -f container/Containerfile -t ghcr.io/jelmer/rouvy-wine .
+    podman build -f container/Containerfile -t ghcr.io/jelmer/rouvy .
     ./run-rouvy.sh
 
 The first run seeds the `rouvy-data` volume from the ROUVY install baked
