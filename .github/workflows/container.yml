@@ -5,6 +5,7 @@ on:
     branches: [main]
     tags: ['v*']
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -13,6 +14,7 @@ permissions:
 env:
   REGISTRY: ghcr.io
   IMAGE: ${{ github.repository_owner }}/rouvy
+  WINE_BASE_IMAGE: ${{ github.repository_owner }}/rouvy-wine-base
 
 jobs:
   build:
@@ -31,6 +33,20 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Build the wine-base image. BuildKit's registry cache keeps Wine
+      # compilation cached across runs, so this is fast when the submodule
+      # and apt pins have not moved. On PRs we only verify it builds; the
+      # rouvy stage below runs against the last published :latest.
+      - name: Build wine-base
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: container/Containerfile.wine-base
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ env.REGISTRY }}/${{ env.WINE_BASE_IMAGE }}:latest
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.WINE_BASE_IMAGE }}:buildcache
+          cache-to: ${{ github.event_name != 'pull_request' && format('type=registry,ref={0}/{1}:buildcache,mode=max', env.REGISTRY, env.WINE_BASE_IMAGE) || '' }}
 
       - name: Compute image tags
         id: tags
@@ -55,9 +71,12 @@ jobs:
           esac
           echo "tags=$tags" >> "$GITHUB_OUTPUT"
 
-      - uses: docker/build-push-action@v6
+      - name: Build rouvy
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: container/Containerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.tags.outputs.tags }}
+          build-args: |
+            WINE_BASE=${{ env.REGISTRY }}/${{ env.WINE_BASE_IMAGE }}:latest

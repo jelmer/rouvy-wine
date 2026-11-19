@@ -1,0 +1,57 @@
+# Base image with winehq-devel and the patched Wine overlay in
+# /opt/wine-overlay. This image changes only when Wine or the patch set
+# moves, so it is built once and reused for every ROUVY installer refresh.
+#
+# Build: podman build -f container/Containerfile.wine-base \
+#            -t ghcr.io/jelmer/rouvy-wine-base .
+
+FROM debian:trixie
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    LANG=C.UTF-8
+
+# WineHQ repository and base dependencies. dpkg --add-architecture i386 is
+# needed even for a 64-bit-only build because winehq-devel pulls in i386
+# libraries.
+RUN dpkg --add-architecture i386 \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends \
+        ca-certificates curl gnupg \
+ && mkdir -p /etc/apt/keyrings \
+ && curl -fsSL https://dl.winehq.org/wine-builds/winehq.key \
+        -o /etc/apt/keyrings/winehq-archive.key \
+ && curl -fsSL https://dl.winehq.org/wine-builds/debian/dists/trixie/winehq-trixie.sources \
+        -o /etc/apt/sources.list.d/winehq-trixie.sources \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends \
+        winehq-devel=11.20~trixie-1 \
+        wine-devel=11.20~trixie-1 \
+        wine-devel-amd64=11.20~trixie-1 \
+        wine-devel-i386=11.20~trixie-1 \
+ && rm -rf /var/lib/apt/lists/*
+
+# Build toolchain for the patched modules, plus everything ROUVY needs at
+# runtime: BlueZ for trainers/sensors, PulseAudio client libs for audio,
+# X11 libs for the display, dbus for the Bluetooth driver.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+        git make gcc flex bison pkg-config \
+        libdbus-1-dev \
+        clang lld llvm \
+        xauth \
+        dbus dbus-user-session \
+        bluez libbluetooth3 \
+        pulseaudio-utils libpulse0 \
+        libasound2 libasound2-plugins \
+        libxrandr2 libxinerama1 libxcursor1 libxi6 libxcomposite1 libxdamage1 \
+        libgl1 libvulkan1 mesa-vulkan-drivers \
+        procps \
+ && rm -rf /var/lib/apt/lists/*
+
+# Build the patched Wine modules and install the overlay in /opt/wine-overlay.
+WORKDIR /build
+COPY container/build.sh container/make-wine-overlay.sh ./
+RUN WINE_SRC=/opt/wine-devel \
+    WINE_DIR=/build/wine \
+    sh build.sh /opt/wine-overlay \
+ && rm -rf /build/wine

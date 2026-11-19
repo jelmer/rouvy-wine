@@ -26,10 +26,16 @@ Pull a published build:
     podman pull ghcr.io/jelmer/rouvy
     ./run-rouvy.sh
 
-Or build locally:
+Or build locally. The build is split in two: a slow `rouvy-wine-base`
+image that compiles the patched Wine modules, and a quick `rouvy` image
+on top of it that downloads the current ROUVY installer and bakes it
+into a prefix.
 
     git submodule update --init --depth 1 container/wine
-    podman build -f container/Containerfile -t ghcr.io/jelmer/rouvy .
+    podman build -f container/Containerfile.wine-base \
+        -t ghcr.io/jelmer/rouvy-wine-base .
+    podman build -f container/Containerfile \
+        -t ghcr.io/jelmer/rouvy .
     ./run-rouvy.sh
 
 The first run seeds the `rouvy-data` volume from the ROUVY install baked
@@ -38,8 +44,31 @@ survive image rebuilds. `run-rouvy.sh` wires up the host X
 display, PulseAudio, the system D-Bus (BlueZ needs the system bus to see
 trainers), and the GPU, and uses host networking.
 
-Rebuild the image to pick up a new ROUVY release or Wine patches; the
-`rouvy-data` volume is not touched by a rebuild.
+The `rouvy-data` volume is not touched by either rebuild.
+
+### Picking up a new ROUVY installer
+
+When ROUVY ships a new installer and nothing else has changed, only the
+second image needs to be rebuilt. The download step is otherwise cached
+and will keep serving the old installer, so force the layer to rerun:
+
+    podman build --no-cache -f container/Containerfile \
+        -t ghcr.io/jelmer/rouvy .
+
+`--no-cache` only busts the layers defined in `Containerfile`.
+`rouvy-wine-base` is pulled in via `FROM`, so Wine itself is not
+recompiled.
+
+### Picking up new Wine patches
+
+Update the `container/wine` submodule (or bump the pinned Wine version in
+`Containerfile.wine-base`), then rebuild both images in order:
+
+    git submodule update --remote container/wine
+    podman build -f container/Containerfile.wine-base \
+        -t ghcr.io/jelmer/rouvy-wine-base .
+    podman build -f container/Containerfile \
+        -t ghcr.io/jelmer/rouvy .
 
 ## Status
 
