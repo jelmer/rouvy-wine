@@ -70,6 +70,37 @@ Update the `container/wine` submodule (or bump the pinned Wine version in
     podman build -f container/Containerfile \
         -t ghcr.io/jelmer/rouvy .
 
+
+## Updating Wine
+
+When `winehq-devel` is upgraded to a new release, `build.sh` will fail with
+a version mismatch until `wine/` is updated to match.
+
+If `rouvy-fixes` has already been updated upstream for the new Wine version:
+
+    git -C wine fetch --depth 1 origin rouvy-fixes
+    git -C wine reset --hard origin/rouvy-fixes
+    ./build.sh
+
+If `rouvy-fixes` is still based on an older Wine release (`wine-OLD`) and
+needs to be rebased onto the installed release (`wine-NEW`):
+
+    # Deepen the shallow clone so it includes the wine-OLD release commit
+    git -C wine fetch --depth 50 origin rouvy-fixes
+
+    # Fetch the old and new tags from upstream Wine (pick a date just before wine-OLD)
+    git -C wine fetch --shallow-since=YYYY-MM-DD \
+        https://gitlab.winehq.org/wine/wine.git \
+        refs/tags/wine-OLD:refs/tags/wine-OLD \
+        refs/tags/wine-NEW:refs/tags/wine-NEW
+
+    git -C wine rebase --onto wine-NEW wine-OLD
+    ./build.sh
+
+If the build fails with stale configure or makefile state after an upgrade,
+delete `wine/build` and run `./build.sh` again. If a `wineserver` is
+already running, restart it with `wine-overlay/bin/wineserver -k`.
+
 ## Status
 
 Tested with a Wahoo KICKR: it is found, pairs as power meter, cadence
